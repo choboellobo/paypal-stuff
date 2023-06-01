@@ -1,7 +1,9 @@
 import PayPal from 'paypal-rest-sdk';
 import express from 'express';
+import bodyParser from 'body-parser';
 
 const app = express();
+app.use(bodyParser.json());
 
 PayPal.configure({
     mode: 'sandbox', // Sandbox or live
@@ -83,5 +85,56 @@ app.get('/details/:id', (req, res) => {
     });
 })
 
+
+app.get('/create-authorize', (req, res) => {
+    const authRequest = {
+        intent: 'authorize',
+        "redirect_urls": {
+            "return_url": "http://return.url",
+            "cancel_url": "http://cancel.url"
+        },
+        payer: {
+          payment_method: 'paypal'
+        },
+        transactions: [
+          {
+            amount: {
+              total: '20.00',
+              currency: 'EUR'
+            },
+            description: 'Autorización de pago'
+          }
+        ]
+      };
+    
+    PayPal.payment.create(authRequest, (error, payment) => {
+        if (error) {
+            console.error(JSON.stringify(error));
+            res.status(500).json(error);
+        } else {
+            res.json(payment);
+        }
+    });
+})
+
+// app.get('/authorize:/id', (req, res) => {
+//     const authId = req.params.id;
+//     const authExecuteRequest = {
+//         payer_id: 'payer_id',
+//         transactions: [
+//             {
+//                 amount: {
+//                     total: '20.00',
+//                     currency: 'EUR'
+//                 }
+//             }
+//         ]
+//     };
+//     PayPal.payment
+
+app.post('/webhook', (req, res) => {
+    console.log(req.body);
+    res.sendStatus(200);
+})
 
 app.listen(3000, () => console.log('Server Started'))
