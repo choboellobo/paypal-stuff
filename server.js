@@ -15,7 +15,7 @@ app.post('/webhook', (req, res) => {
     console.log(req.body);
     res.sendStatus(200);
 })
-
+// 1paso
 app.get('/create', async (req, res) => {
     const request = new paypal.orders.OrdersCreateRequest();
     request.prefer("return=representation");
@@ -32,8 +32,15 @@ app.get('/create', async (req, res) => {
                     "value": "20"
                 }
             }
-         ]
+         ],
+         "payment_source": {
+            "paypal": {
+                "vault_id":"hczzjjf0"
+            }          
+        }
     });
+    request.headers['PayPal-Request-Id'] = Date.now().toString();
+
     try {
         console.log(request)
         const response = await client.execute(request);
@@ -56,6 +63,7 @@ app.get('/:id', async (req, res) => {
     }
 })
 
+// 2paso    
 app.get('/authorize/:id', async (req, res) => {
     const orderId = req.params.id;
     const request = new paypal.orders.OrdersAuthorizeRequest(orderId);
@@ -88,6 +96,17 @@ app.get('/capture/:id', async (req, res) => {
     }   
 })
 
+app.get('/void/:id', async (req, res) => {
+    const authorizationId = req.params.id;
+    const request = new paypal.payments.AuthorizationsVoidRequest(authorizationId);
+    console.log(request)
+    try {
+        const response = await client.execute(request);
+        res.json(response);
+    } catch (error) {
+        res.status(500).json(error);
+    }
+})
 
 
 app.listen(3000);
