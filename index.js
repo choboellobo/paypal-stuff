@@ -2,7 +2,7 @@
 import express from 'express';
 import bodyParser from 'body-parser';
 import paypal from '@paypal/checkout-server-sdk';
-import { createSetupToken, createPaymentToken, setupToken, paymentToken } from './customer.js'
+import { createSetupToken, createPaymentToken, setupToken, paymentToken, listPaymentTokens } from './customer.js'
 const app = express();
 app.use(bodyParser.json());
 
@@ -14,9 +14,10 @@ const client = new paypal.core.PayPalHttpClient(environment);
 
 
 // CUSTOMER
-app.get('/customer/create-setup-token', async (req, res) => {
+app.get('/customer/create-setup-token/:customer', async (req, res) => {
+    const customer = req.params.customer;
     try {
-        const response = await createToken();
+        const response = await createSetupToken(customer);
         res.json(response);
     }catch (error) {
         res.status(500).json(error);
@@ -31,8 +32,10 @@ app.get('/customer/setup-token/:setupToken', async (req, res) => {
     }
 });
 app.get('/customer/create-payment-token/:setupToken', async (req, res) => {
+
+    const setupTokenData = await setupToken(req.params.setupToken);
     try {
-        const response = await createPaymentToken(req.params.setupToken);
+        const response = await createPaymentToken(req.params.setupToken, setupTokenData.customer.id);
         res.json(response);
     }catch (error) {
         res.status(500).json(error);
@@ -46,6 +49,92 @@ app.get('/customer/payment-token/:paymentToken', async (req, res) => {
         res.status(500).json(error);
     }
 });
+app.get('/customer/list-payment-tokens/:customer', async (req, res) => {
+    try {
+        const response = await listPaymentTokens(req.params.customer);
+        res.json(response);
+    }catch (error) {
+        res.status(500).json(error);
+    }
+});
+
+// ORDER
+app.get('/order/create', async (req, res) => {
+    const order = {
+        intent: 'CAPTURE',
+        purchase_units: [{
+            custom_id: 'custom_id',
+            description: 'description',
+            items: [{
+                name: 'Aparmiento',
+                quantity: '1',
+                tax: {
+                    currency_code: 'EUR',
+                    value: '1.00',
+                },
+                unit_amount: {
+                    currency_code: 'EUR',
+                    value: '9.00',
+                }
+            }],
+            amount: {
+                currency_code: 'EUR',
+                value: '10.00',
+                breakdown: {
+                    tax_total: {
+                        currency_code: 'EUR',
+                        value: '1.00',
+                    },
+                    item_total: {
+                        currency_code: 'EUR',
+                        value: '9.00',
+                    }
+                }
+            }
+        }],
+        application_context: {
+            brand_name: 'Smart Parking',
+            locale: 'es-ES',
+            landing_page: 'NO_PREFERENCE',
+            shipping_preference: 'NO_SHIPPING',
+            return_url: 'http://return.ok',
+            cancel_url: 'http://return.cancel',
+        }
+    }
+    const request = new paypal.orders.OrdersCreateRequest();
+    request.prefer("return=representation");
+    request.requestBody(order);
+    request.headers['PayPal-Request-Id'] = Date.now().toString();
+    try {
+        const response = await client.execute(request);
+        res.json(response.result);
+    }catch (error) {
+        res.status(500).json(error);
+    }
+});
+app.get('/order/:orderId', async (req, res) => {
+    const orderId = req.params.orderId;
+    const request = new paypal.orders.OrdersGetRequest(orderId);
+
+    try {
+        const response = await client.execute(request);
+        res.json(response.result);
+    }catch (error) {
+        res.status(500).json(error);
+    }
+});
+app.get('/order/:orderId/capture', async (req, res) => {
+    const orderId = req.params.orderId;
+    const request = new paypal.orders.OrdersCaptureRequest(orderId);
+    request.requestBody({});
+    try {
+        const response = await client.execute(request);
+        res.json(response.result);
+    }catch (error) {
+        res.status(500).json(error);
+    }
+});
+
 
 
 app.listen(3000, () => {
