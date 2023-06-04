@@ -1,4 +1,4 @@
-import axios from 'axios';
+import fetch from 'node-fetch';
 import { PayPalAccessTokenManager } from './PayPal.js';
 
 // Configura las credenciales y la URL base de la API de PayPal
@@ -8,7 +8,7 @@ const baseUrl = 'https://api.sandbox.paypal.com';
 
 const paypalAccessTokenManager = new PayPalAccessTokenManager(clientId, clientSecret)
 
-
+// Setup token
 export const createSetupToken = (customer_id) => {
     return new Promise(async (resolve, reject) => {
 
@@ -39,8 +39,9 @@ export const createSetupToken = (customer_id) => {
         }
     };
     try {
-        const response = await axios.post(url, payload, { headers: headers });
-       resolve(response.data);
+        const response = await fetch(url, { method: 'post', headers, body: JSON.stringify(payload)})
+        const data = await response.json();
+       resolve(data);
     }catch (error) {
         reject(error);
     }
@@ -57,13 +58,16 @@ export const setupToken = (token) => {
             'Authorization': `Bearer ${accessToken}`
         };
         try {
-            const response = await axios.get(url, { headers: headers });
-            resolve(response.data);
+            const response = await fetch(url, { headers })
+            const data = response.json()
+            resolve(data);
         }catch (error) {
             reject(error);
         }
     });
 }
+
+// Payment token
 
 export const createPaymentToken = (token, customer_id) => {
     return new Promise(async (resolve, reject) => {
@@ -86,8 +90,9 @@ export const createPaymentToken = (token, customer_id) => {
         };
         console.log(payload);
         try {
-            const response = await axios.post(url, payload, { headers: headers });
-            resolve(response.data);
+            const response = await fetch(url, { method:'post', headers, body: JSON.stringify(payload)});
+            const data = await response.json()
+            resolve(data);
         }catch (error) {
             reject(error);
         }
@@ -103,8 +108,9 @@ export const paymentToken = (token) => {
             'Authorization': `Bearer ${accessToken}`
         };
         try {
-            const response = await axios.get(url, { headers: headers });
-            resolve(response.data);
+            const response = await fetch(url, { headers })
+            const data = await response.json()
+            resolve(data);
         }catch (error) {
             reject(error);
         }
@@ -120,10 +126,29 @@ export const listPaymentTokens = (customer_id) => {
             'Authorization': `Bearer ${accessToken}`
         };
         try {
-            const response = await axios.get(url, { headers: headers });
-            resolve(response.data);
+            const response = await fetch(url, { headers })
+            const data = await response.json()
+            resolve(data);
         }catch (error) {
             reject(error);
         }
     });
 };
+
+export const deletePaymentToken = token => {
+    return new Promise( async (resolve, reject) => {
+        const url = `${baseUrl}/v3/vault/payment-tokens/${token}`;
+        const accessToken = await paypalAccessTokenManager.getAccessToken();
+        const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+        };
+        try {
+            const response = await fetch(url, { method: 'DELETE', headers })
+            const data = await response.json();
+            resolve(data)
+        } catch (error) {
+            reject(error)
+        }
+    })
+}
